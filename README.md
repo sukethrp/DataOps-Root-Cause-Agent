@@ -54,7 +54,51 @@ cases); **`demo/`** holds the demo walkthrough.
 
 ## Try it
 
-Run the agent against each incident:
+### Setup
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # fill in Foundry project + IQ values for live runs
+```
+
+### Diagnose an incident
+
+From the repo root (uses `PYTHONPATH=src` so `python -m agent` resolves):
+
+```bash
+PYTHONPATH=src python -m agent diagnose incidents/incident-01-dbt-failure.log
+```
+
+With `.env` configured, the command runs triage, Foundry IQ retrieval, reasoning,
+verification, and recommendation against your knowledge base. Without Foundry env
+vars it falls back to **local mode** (keyword retrieval over `knowledge/` plus
+heuristic steps) and prints a notice on stderr.
+
+Force local mode:
+
+```bash
+PYTHONPATH=src python -m agent diagnose incidents/incident-01-dbt-failure.log --local
+```
+
+Each run prints a cited root cause, a propose-only fix (`action_type: proposal`), and
+writes a full audit JSON under `runs/`.
+
+Run all three fixtures:
+
+```bash
+PYTHONPATH=src python -m agent diagnose incidents/incident-01-dbt-failure.log
+PYTHONPATH=src python -m agent diagnose incidents/incident-02-airflow-traceback.txt
+PYTHONPATH=src python -m agent diagnose incidents/incident-03-dq-alert.json
+```
+
+### Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
 
 | Incident | Input | Expected root cause |
 |----------|-------|--------------------|
