@@ -1,0 +1,4 @@
+azure-ai-projects>=2.0.0b4,<3
+azure-identity==1.25.3
+python-dotenv==1.2.2
+pydantic==2.13.4
