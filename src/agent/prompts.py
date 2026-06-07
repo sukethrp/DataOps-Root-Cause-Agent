@@ -9,6 +9,7 @@ from .triage import TriageResult
 
 if TYPE_CHECKING:
     from .reasoner import Hypothesis
+    from .verifier import VerifiedHypothesis
 
 REASONER_INSTRUCTIONS = """\
 You are a data pipeline root-cause analyst for ShopCo revenue analytics.
@@ -156,3 +157,56 @@ def filter_grounding_by_citations(
         passages=[passage for passage in grounding.passages if passage.ref_id in cited],
         citations=[citation for citation in grounding.citations if citation.ref_id in cited],
     )
+
+
+RECOMMEND_INSTRUCTIONS = """\
+You produce a final root-cause diagnosis and a concrete fix proposal for a data pipeline incident.
+
+Rules:
+- root_cause: a clear, cited narrative explaining why the incident occurred. Reference ref_id values inline as [ref_id:N].
+- recommended_fix: specific steps an on-call engineer should take (SQL/dbt/Airflow actions, who to contact, what to re-run).
+- Use only facts from the verified hypothesis and cited grounding. Do not invent changes or owners.
+- PROPOSE ONLY: recommend actions for human approval. Never state that fixes were executed, scheduled, or applied.
+- Do not run commands, mutate production, or imply automated remediation.
+- Align the fix with runbook remediation steps when grounding includes a runbook.
+"""
+
+
+def build_recommend_input(
+    hypothesis: VerifiedHypothesis,
+    grounding: RetrievalResult,
+    *,
+    triage: TriageResult | None = None,
+) -> str:
+    """Assemble the user message for the final recommendation call."""
+    cited_grounding = filter_grounding_by_citations(grounding, hypothesis.citation_ids)
+    lines = [
+        "## Verified hypothesis",
+        f"confidence: {hypothesis.confidence}",
+        f"summary: {hypothesis.summary}",
+        "reasoning_steps:",
+    ]
+    lines.extend(f"- {step}" for step in hypothesis.reasoning_steps)
+    lines.append(f"citation_ids: {hypothesis.citation_ids}")
+
+    if triage is not None:
+        lines.extend(
+            [
+                "",
+                "## Triage context",
+                f"failure_type: {triage.failure_type.value}",
+                f"object_name: {triage.object_name}",
+                f"error_text: {triage.error_text}",
+                f"column: {triage.column}",
+                f"partition_date: {triage.partition_date}",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Cited grounding",
+            format_grounding(cited_grounding),
+        ]
+    )
+    return "\n".join(lines)
