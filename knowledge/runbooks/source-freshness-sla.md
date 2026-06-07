@@ -10,9 +10,9 @@
 
 ## Likely causes (ranked)
 
-1. An **upstream delay** cascaded (late partition — see `missing-late-partition.md`).
+1. An **upstream delay** cascaded (late partition; see `missing-late-partition.md`).
 2. A **build failure** earlier in the DAG blocked the mart refresh (e.g., schema
-   drift — see `schema-drift.md`).
+   drift; see `schema-drift.md`).
 3. Resource contention / long-running build pushed completion past the SLA.
 
 ## Diagnostics
@@ -20,7 +20,7 @@
 1. Determine whether the DAG **failed** (look for an upstream error) or merely **ran
    late** (all green but slow).
 2. If failed, branch to the matching runbook (`schema-drift.md` or
-   `missing-late-partition.md`) — freshness breach is usually a *symptom*, not the
+   `missing-late-partition.md`); freshness breach is usually a *symptom*, not the
    root cause.
 3. Confirm the impacted SLA and consumers in `architecture-and-lineage.md`.
 

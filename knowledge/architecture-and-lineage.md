@@ -1,4 +1,4 @@
-# Pipeline Architecture & Lineage — ShopCo Revenue Analytics
+# Pipeline Architecture & Lineage: ShopCo Revenue Analytics
 
 > This document describes the `revenue_daily` data pipeline. It is the primary
 > lineage reference for the DataOps Root-Cause Agent. The agent grounds on this
@@ -7,7 +7,7 @@
 ## Platform
 
 - **Warehouse / lakehouse:** Delta tables on a lakehouse. (Implementation is
-  portable across Snowflake and Microsoft Fabric — schema and lineage below are
+  portable across Snowflake and Microsoft Fabric; the schema and lineage below are
   the same in both.)
 - **Transformation:** dbt (project `shopco_analytics`).
 - **Orchestration:** Apache Airflow, DAG `revenue_daily`.

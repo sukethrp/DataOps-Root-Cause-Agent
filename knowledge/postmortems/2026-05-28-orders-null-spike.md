@@ -14,7 +14,7 @@ reported daily revenue was implausibly low.
 
 A source deploy at **01:50 UTC** (see `schema-changelog.md`, BREAKING (data) entry)
 caused the OLTP system to emit NULL `order_amount` for roughly a third of new orders.
-The column still existed, so no structural error occurred — only the values were bad.
+The column still existed, so no structural error occurred; only the values were bad.
 
 ## Resolution
 

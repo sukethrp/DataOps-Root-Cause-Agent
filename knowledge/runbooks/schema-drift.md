@@ -13,7 +13,7 @@
 ## Likely causes (ranked)
 
 1. **Upstream column renamed or dropped** by the Source team without notice
-   (most common — see `schema-changelog.md`).
+   (most common; see `schema-changelog.md`).
 2. Upstream column **type change** incompatible with a downstream cast.
 3. A table or schema was relocated/renamed upstream.
 

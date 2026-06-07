@@ -6,13 +6,13 @@
 
 - A DQ monitor or dbt `not_null` test fires: the **null rate** for a column
   (e.g., `fct_revenue_daily.order_amount`) jumps far above its baseline/threshold.
-- The pipeline may still "succeed" structurally — rows load, but values are wrong.
+- The pipeline may still "succeed" structurally: rows load, but values are wrong.
 - Revenue totals on the dashboard drop or look implausible.
 
 ## Likely causes (ranked)
 
 1. **Upstream source regression**: a source deploy began emitting NULLs for a column
-   that was previously populated (most common — see `schema-changelog.md` for
+   that was previously populated (most common; see `schema-changelog.md` for
    data-level breaking changes).
 2. A join in staging started dropping/!matching keys, producing NULLs after the join.
 3. A type cast silently failing to NULL (e.g., bad string → numeric cast).

@@ -13,7 +13,7 @@ date-partitioned source.
 
 ## Likely causes (ranked)
 
-1. **Upstream daily export landed late or not at all** (most common — the source
+1. **Upstream daily export landed late or not at all** (most common: the source
    system's nightly job runs long).
 2. Source-system connectivity / credential expiry causing a timeout.
 3. Partition path convention changed upstream.
@@ -25,7 +25,7 @@ date-partitioned source.
    source export location).
 3. Confirm via `architecture-and-lineage.md` that the stale partition is what feeds
    `fct_revenue_daily` and the dashboard.
-4. Distinguish from schema drift: here the column/structure is fine — the **data for
+4. Distinguish from schema drift: here the column/structure is fine; the **data for
    the date is absent or delayed**, not a column error.
 
 ## Remediation

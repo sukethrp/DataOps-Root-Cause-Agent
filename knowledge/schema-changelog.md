@@ -1,4 +1,4 @@
-# Upstream Schema Changelog — `raw.*`
+# Upstream Schema Changelog: `raw.*`
 
 > Chronological log of schema changes to source tables. The agent grounds on
 > this file to correlate a failure timestamp with a recent breaking change.
@@ -22,4 +22,4 @@
   column still exists but began producing NULLs. This is the root cause referenced
   by postmortem `2026-05-28-orders-null-spike.md`.
 - The **2026-05-21** rename is structurally identical to the 2026-06-10 incident and
-  is a strong precedent — see postmortem `2026-05-21-revenue-dashboard-empty.md`.
+  is a strong precedent; see postmortem `2026-05-21-revenue-dashboard-empty.md`.
