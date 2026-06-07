@@ -1,0 +1,18 @@
+[2026-06-11 02:03:12 UTC] {taskinstance.py} INFO - Executing task extract_orders on 2026-06-11
+[2026-06-11 02:03:12 UTC] {extract.py} INFO - Reading source export for partition date=2026-06-11
+[2026-06-11 02:08:12 UTC] {extract.py} WARNING - Source export not found at orders/date=2026-06-11/ (retry 1/3)
+[2026-06-11 02:13:12 UTC] {extract.py} WARNING - Source export not found at orders/date=2026-06-11/ (retry 2/3)
+[2026-06-11 02:18:12 UTC] {extract.py} WARNING - Source export not found at orders/date=2026-06-11/ (retry 3/3)
+[2026-06-11 02:18:12 UTC] {taskinstance.py} ERROR - Task failed with exception
+Traceback (most recent call last):
+  File "/opt/airflow/dags/shopco/extract.py", line 88, in extract_partition
+    files = source.list("orders", partition=f"date={run_date}")
+  File "/opt/airflow/dags/shopco/source_client.py", line 51, in list
+    raise PartitionNotFoundError(f"No objects for partition {partition}")
+shopco.errors.PartitionNotFoundError: No objects for partition date=2026-06-11
+[2026-06-11 02:18:13 UTC] {taskinstance.py} INFO - Marking task as FAILED. dag_id=revenue_daily, task_id=extract_orders, execution_date=2026-06-11
+[2026-06-11 02:18:13 UTC] {scheduler} INFO - Downstream tasks dbt_build_staging, dbt_build_marts marked UPSTREAM_FAILED
+
+# Note: prior day partition date=2026-06-10 ingested normally.
+# Note: upstream nightly export job "oltp_orders_export" still RUNNING as of 02:18 UTC (normally completes by 01:55 UTC).
+# Freshness: fct_revenue_daily last successful refresh = 2026-06-10. SLA deadline 2026-06-11 04:00 UTC at risk.

@@ -1,0 +1,22 @@
+{
+  "alert_id": "dq-2026-06-12-0241",
+  "timestamp": "2026-06-12T02:41:00Z",
+  "monitor": "null_rate_check",
+  "severity": "high",
+  "dag_id": "revenue_daily",
+  "build_status": "success",
+  "object": "analytics.fct_revenue_daily",
+  "column": "order_amount",
+  "metric": "null_rate",
+  "observed_value": 0.34,
+  "threshold": 0.01,
+  "baseline_7d_avg": 0.004,
+  "rows_scanned": 18422,
+  "rows_null": 6263,
+  "partition_date": "2026-06-12",
+  "message": "null_rate for fct_revenue_daily.order_amount = 0.34 exceeds threshold 0.01. Build succeeded structurally; values appear degraded. Reported daily revenue is ~31% below 7-day average.",
+  "links": {
+    "dashboard": "Revenue Daily",
+    "upstream_source": "raw.orders"
+  }
+}
