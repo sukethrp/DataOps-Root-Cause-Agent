@@ -85,7 +85,7 @@ def _diagnose_foundry(raw_text: str, *, runs_dir: Path) -> tuple[Recommendation,
 
     with RetrievalClient() as client:
         grounding = client.retrieve(query)
-        candidates = reason(triage_result, retrieval_client=client)
+        candidates = reason(triage_result, grounding=grounding, retrieval_client=client)
         verified = verify(candidates, grounding, triage=triage_result, retrieval_client=client)
         recommendation = recommend(
             verified,

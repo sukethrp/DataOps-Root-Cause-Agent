@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from .config import Settings
 from .prompts import REASONER_INSTRUCTIONS, build_reasoner_input, build_retrieval_query
-from .retrieval import RetrievalClient
+from .retrieval import RetrievalClient, RetrievalResult
 from .triage import TriageResult
 
 
@@ -37,6 +37,7 @@ class ReasonerError(RuntimeError):
 def reason(
     triage: TriageResult,
     *,
+    grounding: RetrievalResult | None = None,
     settings: Settings | None = None,
     retrieval_client: RetrievalClient | None = None,
 ) -> Hypotheses:
@@ -46,7 +47,8 @@ def reason(
     client = retrieval_client or RetrievalClient(active_settings)
 
     try:
-        grounding = client.retrieve(build_retrieval_query(triage))
+        if grounding is None:
+            grounding = client.retrieve(build_retrieval_query(triage))
         openai_client = client.project_client.get_openai_client()
         response = openai_client.responses.parse(
             model=active_settings.model_name,
