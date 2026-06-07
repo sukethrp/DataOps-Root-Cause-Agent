@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from enum import Enum
 from pathlib import Path
 
@@ -132,3 +133,52 @@ def _format_prompt(signal: IncidentSignal) -> str:
         "Incident signal:\n"
         f"{signal.raw_text}"
     )
+
+
+def triage_heuristic(raw_text: str) -> TriageResult:
+    """Deterministic triage for local/demo runs without a model call."""
+    text = _load_incident_text(raw_text)
+    kind = _detect_signal_kind(text)
+
+    if kind == SignalKind.DQ_ALERT_JSON:
+        payload = json.loads(text.strip())
+        return TriageResult(
+            failure_type=FailureType.DATA_QUALITY,
+            object_name=payload.get("object"),
+            error_text=payload.get("message"),
+            timestamp=payload.get("timestamp"),
+            column=payload.get("column"),
+            partition_date=payload.get("partition_date"),
+        )
+
+    if kind == SignalKind.AIRFLOW_TRACEBACK:
+        partition_match = re.search(r"date=(\d{4}-\d{2}-\d{2})", text)
+        timestamp_match = re.search(
+            r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) UTC\].*ERROR",
+            text,
+        )
+        error_match = re.search(r"(\w+Error: .+)", text)
+        return TriageResult(
+            failure_type=FailureType.MISSING_PARTITION,
+            object_name="extract_orders",
+            error_text=error_match.group(1) if error_match else "partition not found",
+            timestamp=f"{timestamp_match.group(1)}Z" if timestamp_match else None,
+            partition_date=partition_match.group(1) if partition_match else None,
+        )
+
+    if kind == SignalKind.DBT_LOG:
+        object_match = re.search(r"Database Error in model (\w+)", text, re.IGNORECASE)
+        if not object_match:
+            object_match = re.search(r"model [\w.]+\.(\w+)", text, re.IGNORECASE)
+        column_match = re.search(r'column "(\w+)" does not exist', text, re.IGNORECASE)
+        timestamp_match = re.search(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) UTC", text)
+        error_match = re.search(r'column "(\w+)" does not exist', text, re.IGNORECASE)
+        return TriageResult(
+            failure_type=FailureType.SCHEMA_DRIFT,
+            object_name=object_match.group(1) if object_match else None,
+            error_text=f'column "{error_match.group(1)}" does not exist' if error_match else None,
+            timestamp=f"{timestamp_match.group(1)}Z" if timestamp_match else None,
+            column=column_match.group(1) if column_match else None,
+        )
+
+    return TriageResult(failure_type=FailureType.UNKNOWN, error_text=text[:500])
