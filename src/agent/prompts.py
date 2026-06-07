@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .retrieval import RetrievalResult
 from .triage import TriageResult
+
+if TYPE_CHECKING:
+    from .reasoner import Hypothesis
 
 REASONER_INSTRUCTIONS = """\
 You are a data pipeline root-cause analyst for ShopCo revenue analytics.
@@ -85,4 +90,69 @@ def build_reasoner_input(triage: TriageResult, grounding: RetrievalResult) -> st
         + "\n".join(triage_lines)
         + "\n\n## Grounding (cite using ref_id)\n"
         + format_grounding(grounding)
+    )
+
+
+VERIFIER_INSTRUCTIONS = """\
+You are an impartial judge verifying data pipeline root-cause hypotheses.
+
+Given one hypothesis, its reasoning steps, and the cited grounding passages only, decide
+whether the evidence actually supports the root-cause claim.
+
+Rules:
+- supported is true only when every key factual claim in the summary is backed by the cited passages.
+- confidence is between 0 and 1 (0 = no support, 1 = fully supported). Use values below 0.5 when support is weak or partial.
+- supporting_citation_ids must list only ref_id values from the grounding that directly support the claim.
+- If the hypothesis cites passages that do not substantiate the claim, set supported to false.
+- Do not infer facts beyond the cited grounding text.
+- Reasoning steps that overreach beyond the citations should lower confidence or fail verification.
+"""
+
+
+def build_verifier_input(
+    hypothesis: Hypothesis,
+    grounding: RetrievalResult,
+    *,
+    triage: TriageResult | None = None,
+) -> str:
+    """Assemble the user message for a single hypothesis verification call."""
+    lines = [
+        "## Hypothesis",
+        f"rank: {hypothesis.rank}",
+        f"summary: {hypothesis.summary}",
+        "reasoning_steps:",
+    ]
+    lines.extend(f"- {step}" for step in hypothesis.reasoning_steps)
+    lines.append(f"citation_ids: {hypothesis.citation_ids}")
+
+    if triage is not None:
+        lines.extend(
+            [
+                "",
+                "## Triage context",
+                f"failure_type: {triage.failure_type.value}",
+                f"object_name: {triage.object_name}",
+                f"error_text: {triage.error_text}",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Cited grounding only",
+            format_grounding(grounding),
+        ]
+    )
+    return "\n".join(lines)
+
+
+def filter_grounding_by_citations(
+    grounding: RetrievalResult,
+    citation_ids: list[str],
+) -> RetrievalResult:
+    """Return grounding passages and citations limited to the given ref_ids."""
+    cited = set(citation_ids)
+    return RetrievalResult(
+        passages=[passage for passage in grounding.passages if passage.ref_id in cited],
+        citations=[citation for citation in grounding.citations if citation.ref_id in cited],
     )
