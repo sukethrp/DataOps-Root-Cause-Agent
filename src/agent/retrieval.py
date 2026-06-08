@@ -182,17 +182,18 @@ def _parse_retrieval_payload(payload: dict[str, Any]) -> RetrievalResult:
             if not isinstance(item, dict):
                 continue
             ref_id = str(item.get("ref_id", ""))
+            content = str(item.get("content", ""))
             passages.append(
                 Passage(
                     ref_id=ref_id,
-                    content=str(item.get("content", "")),
+                    content=content,
                     title=item.get("title"),
                 )
             )
             citations.append(
                 Citation(
                     ref_id=ref_id,
-                    doc_key=item.get("doc_key") or item.get("title"),
+                    doc_key=_doc_key_from_chunk(content, ref_id),
                 )
             )
         return RetrievalResult(passages=passages, citations=citations)
@@ -200,6 +201,13 @@ def _parse_retrieval_payload(payload: dict[str, Any]) -> RetrievalResult:
     citations = [_parse_citation(ref) for ref in payload.get("references", [])]
     passages = _parse_passages(payload.get("response", []))
     return RetrievalResult(passages=passages, citations=citations)
+
+
+def _doc_key_from_chunk(content: str, ref_id: str) -> str:
+    for line in content.splitlines():
+        if line.startswith("# "):
+            return line[2:].strip()
+    return f"chunk {ref_id}"
 
 
 def _parse_citation(reference: dict[str, Any]) -> Citation:
