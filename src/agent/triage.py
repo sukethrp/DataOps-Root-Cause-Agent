@@ -100,9 +100,16 @@ def triage(raw_text: str, *, settings: Settings | None = None) -> TriageResult:
 
 
 def _load_incident_text(raw_text: str) -> str:
-    candidate = Path(raw_text.strip())
-    if candidate.is_file():
-        return candidate.read_text(encoding="utf-8")
+    stripped = raw_text.strip()
+    if "\n" in stripped or len(stripped) > 260:
+        return raw_text
+
+    candidate = Path(stripped)
+    try:
+        if candidate.is_file():
+            return candidate.read_text(encoding="utf-8")
+    except OSError:
+        return raw_text
     return raw_text
 
 
