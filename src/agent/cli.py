@@ -7,6 +7,8 @@ import os
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from .audit import AuditTrace, record_audit
 from .local_grounding import retrieve_local
 from .local_pipeline import reason_heuristic, recommend_heuristic, verify_heuristic
@@ -57,6 +59,7 @@ def diagnose(path: Path, *, local: bool = False, runs_dir: Path = Path("runs")) 
         return 1
 
     raw_text = incident_path.read_text(encoding="utf-8")
+    load_dotenv()
     use_local = local or not _foundry_configured()
     if not local and use_local:
         print("Foundry not configured; running local diagnosis mode.", file=sys.stderr)
