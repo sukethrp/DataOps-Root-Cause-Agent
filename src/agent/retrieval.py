@@ -164,6 +164,8 @@ def _unwrap_mcp_result(result: dict[str, Any]) -> dict[str, Any]:
             parsed = json.loads(text)
         except json.JSONDecodeError:
             continue
+        if isinstance(parsed, list):
+            return {"chunks": parsed}
         if isinstance(parsed, dict):
             return parsed
 
@@ -172,6 +174,29 @@ def _unwrap_mcp_result(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def _parse_retrieval_payload(payload: dict[str, Any]) -> RetrievalResult:
+    chunks = payload.get("chunks")
+    if isinstance(chunks, list):
+        passages: list[Passage] = []
+        citations: list[Citation] = []
+        for item in chunks:
+            if not isinstance(item, dict):
+                continue
+            ref_id = str(item.get("ref_id", ""))
+            passages.append(
+                Passage(
+                    ref_id=ref_id,
+                    content=str(item.get("content", "")),
+                    title=item.get("title"),
+                )
+            )
+            citations.append(
+                Citation(
+                    ref_id=ref_id,
+                    doc_key=item.get("doc_key") or item.get("title"),
+                )
+            )
+        return RetrievalResult(passages=passages, citations=citations)
+
     citations = [_parse_citation(ref) for ref in payload.get("references", [])]
     passages = _parse_passages(payload.get("response", []))
     return RetrievalResult(passages=passages, citations=citations)
