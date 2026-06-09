@@ -14,6 +14,8 @@ from .reasoner import Hypothesis, Hypotheses
 from .retrieval import RetrievalClient, RetrievalResult
 from .triage import TriageResult
 
+MIN_VERIFICATION_CONFIDENCE = 0.6
+
 
 class VerificationJudgment(BaseModel):
     """Structured output from a single hypothesis judge call."""
@@ -33,6 +35,15 @@ class VerificationJudgment(BaseModel):
     )
 
 
+class DroppedHypothesisRecord(BaseModel):
+    """Hypothesis removed during verification."""
+
+    rank: int
+    summary: str
+    citation_ids: list[str] = Field(default_factory=list)
+    reason: str
+
+
 class VerifiedHypothesis(BaseModel):
     """A hypothesis that passed citation-backed verification."""
 
@@ -47,6 +58,7 @@ class VerifiedHypotheses(BaseModel):
     """Ranked, scored hypotheses that survived verification."""
 
     hypotheses: list[VerifiedHypothesis] = Field(default_factory=list)
+    dropped: list[DroppedHypothesisRecord] = Field(default_factory=list)
 
 
 class VerifierError(RuntimeError):
@@ -69,9 +81,10 @@ def verify(
     try:
         openai_client = client.project_client.get_openai_client()
         survivors: list[VerifiedHypothesis] = []
+        dropped: list[DroppedHypothesisRecord] = []
 
         for hypothesis in sorted(hypotheses.hypotheses, key=lambda item: item.rank):
-            verified = _verify_one(
+            verified, drop_record = _verify_one(
                 hypothesis,
                 grounding,
                 triage=triage,
@@ -80,16 +93,27 @@ def verify(
             )
             if verified is not None:
                 survivors.append(verified)
+            elif drop_record is not None:
+                dropped.append(drop_record)
 
         survivors.sort(key=lambda item: item.confidence, reverse=True)
         ranked = [
             item.model_copy(update={"rank": index})
             for index, item in enumerate(survivors, start=1)
         ]
-        return VerifiedHypotheses(hypotheses=ranked)
+        return VerifiedHypotheses(hypotheses=ranked, dropped=dropped)
     finally:
         if owns_client:
             client.close()
+
+
+def _drop_record(hypothesis: Hypothesis, reason: str) -> DroppedHypothesisRecord:
+    return DroppedHypothesisRecord(
+        rank=hypothesis.rank,
+        summary=hypothesis.summary,
+        citation_ids=list(hypothesis.citation_ids),
+        reason=reason,
+    )
 
 
 def _verify_one(
@@ -99,17 +123,17 @@ def _verify_one(
     triage: TriageResult | None,
     openai_client: object,
     model_name: str,
-) -> VerifiedHypothesis | None:
+) -> tuple[VerifiedHypothesis | None, DroppedHypothesisRecord | None]:
     if not hypothesis.citation_ids:
-        return None
+        return None, _drop_record(hypothesis, "no_citations")
 
     cited_grounding = filter_grounding_by_citations(grounding, hypothesis.citation_ids)
     if not cited_grounding.passages and not cited_grounding.citations:
-        return None
+        return None, _drop_record(hypothesis, "unresolvable_citations")
 
     valid_ids = _valid_citation_ids(grounding)
     if not any(ref_id in valid_ids for ref_id in hypothesis.citation_ids):
-        return None
+        return None, _drop_record(hypothesis, "unresolvable_citations")
 
     response = openai_client.responses.parse(
         model=model_name,
@@ -123,8 +147,12 @@ def _verify_one(
         msg = f"Model did not return verification output for hypothesis rank {hypothesis.rank}"
         raise VerifierError(msg)
 
+    confidence = max(0.0, min(1.0, judgment.confidence))
     if not judgment.supported:
-        return None
+        return None, _drop_record(hypothesis, "unsupported")
+
+    if confidence < MIN_VERIFICATION_CONFIDENCE:
+        return None, _drop_record(hypothesis, "low_confidence")
 
     supporting_ids = [
         ref_id
@@ -132,18 +160,17 @@ def _verify_one(
         if ref_id in valid_ids and ref_id in set(hypothesis.citation_ids)
     ]
     if not supporting_ids:
-        return None
+        return None, _drop_record(hypothesis, "no_supporting_citations")
 
-    confidence = max(0.0, min(1.0, judgment.confidence))
-    if confidence <= 0.0:
-        return None
-
-    return VerifiedHypothesis(
-        rank=hypothesis.rank,
-        summary=hypothesis.summary,
-        reasoning_steps=hypothesis.reasoning_steps,
-        citation_ids=supporting_ids,
-        confidence=confidence,
+    return (
+        VerifiedHypothesis(
+            rank=hypothesis.rank,
+            summary=hypothesis.summary,
+            reasoning_steps=hypothesis.reasoning_steps,
+            citation_ids=supporting_ids,
+            confidence=confidence,
+        ),
+        None,
     )
 
 

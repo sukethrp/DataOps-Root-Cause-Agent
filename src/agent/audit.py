@@ -71,7 +71,15 @@ def record_audit(
 ) -> Path:
     """Write the full reasoning trace as JSON under runs/."""
     run_id = trace.run_id or _new_run_id()
-    kept_summaries = {item.summary for item in trace.verified.hypotheses}
+    dropped = [
+        DroppedHypothesisRecord(
+            rank=item.rank,
+            summary=item.summary,
+            citation_ids=list(item.citation_ids),
+            reason=item.reason,
+        )
+        for item in trace.verified.dropped
+    ]
 
     record = AuditRecord(
         run_id=run_id,
@@ -82,7 +90,7 @@ def record_audit(
         retrieved_citations=_serialize_retrieved(trace.grounding),
         hypotheses_generated=list(trace.hypotheses.hypotheses),
         hypotheses_kept=list(trace.verified.hypotheses),
-        hypotheses_dropped=_dropped_hypotheses(trace.hypotheses, kept_summaries),
+        hypotheses_dropped=dropped,
         recommendation=trace.recommendation,
         confidence=_top_confidence(trace.verified, trace.recommendation),
     )
@@ -127,26 +135,6 @@ def _serialize_retrieved(grounding: RetrievalResult) -> list[RetrievedCitationRe
         )
 
     return records
-
-
-def _dropped_hypotheses(
-    generated: Hypotheses,
-    kept_summaries: set[str],
-) -> list[DroppedHypothesisRecord]:
-    dropped: list[DroppedHypothesisRecord] = []
-    for hypothesis in generated.hypotheses:
-        if hypothesis.summary in kept_summaries:
-            continue
-        reason = "no_citations" if not hypothesis.citation_ids else "failed_verification"
-        dropped.append(
-            DroppedHypothesisRecord(
-                rank=hypothesis.rank,
-                summary=hypothesis.summary,
-                citation_ids=list(hypothesis.citation_ids),
-                reason=reason,
-            )
-        )
-    return dropped
 
 
 def _top_confidence(

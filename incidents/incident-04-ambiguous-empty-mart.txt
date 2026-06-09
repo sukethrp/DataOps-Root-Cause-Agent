@@ -1,0 +1,5 @@
+[2026-06-12 03:05:00 UTC] alert: "Revenue Daily" dashboard shows no data for 2026-06-12.
+[2026-06-12 03:05:00 UTC] fct_revenue_daily row count for partition 2026-06-12 = 0.
+[2026-06-12 02:35:00 UTC] dbt run summary: PASS=12 WARN=0 ERROR=0 SKIP=0 (build succeeded).
+[2026-06-12 02:18:00 UTC] note: upstream export job "oltp_orders_export" completion time unconfirmed for 2026-06-12.
+No column errors and no DQ threshold alerts were recorded.
